@@ -26,17 +26,13 @@ install: venv
 
 # Run the main script
 run:
-	@echo "Running A-Maze-ing..."
+	@echo "Running Flyi-in..."
 	$(PYTHON) $(MAIN_SCRIPT) $(CONFIG_FILE)
 
 # Run the main script in debug mode using pdb
 debug:
-	@echo "Running A-Maze-ing in debug mode..."
+	@echo "Running Fly-in in debug mode..."
 	$(PYTHON) -m pdb $(MAIN_SCRIPT) $(CONFIG_FILE)
-
-build:
-	@echo "Building wheel and sdist..."
-	python3 -m build
 
 # Clean temporary files and caches
 clean:
