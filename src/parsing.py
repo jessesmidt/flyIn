@@ -35,7 +35,29 @@ class Parser:
 				raise ValueError(f"Line {line_num}: unknown syntax")
 		return Graph(self.zones, self.connections, self.nb_drones)
 
+	def _parse_nb_drones(self, line: str, line_num: int) -> None:
+		"""
+
+		"""
+		if ':' not in line:
+			raise ValueError(f"Line {line_num}: expected 'nb_drones: <number>'")
+
+		content = line.split(':', 1)[1].strip()
+
+		if not content:
+			raise ValueError(f"Line {line_num}: nb_drones value is missing")
+		try:
+			self.nb_drones = int(content)
+		except ValueError:
+			raise ValueError(f"Line {line_num}: {key} must be an integer")
+
+		if self.nb_drones <= 0:
+			raise ValueError(f"Line {line_num}: {key} must be a positive integer")		
+
 	def _parse_zone(self, line: str, line_num: int) -> None:
+		"""
+
+		"""
 		content = line.split(':', 1)[1].strip()
 		if '[' in content:
 			main, meta = content.split('[', 1)
@@ -44,9 +66,60 @@ class Parser:
 			main, meta = content, ''
 
 		parts = main.split():
-		name, x, y = parts[0], int(parts[1]), int(parts[2])
-		for tag in meta.split():
-			key, value = tag.split('=')
+		if len(parts < 3):
+			raise ValueError(f"Line {line_num}: expected name x y")
+
+		name = parts[0]
+		
+		try:
+			x, y = int(parts[1]), int(parts[2])
+		except ValueError:
+			ValueError(f"Line {line_num}: coordinates must be integers")
+		if x < 0 or y < 0:
+			raise ValueError(f"Line {line_num}: coordinates must be positive integers")
+
+		metadata = self._parse_metadata(meta, line_num)
+		zone_type = metadata,get('zone', 'normal')
+		color = metadata.get('color', None)
+		max_drones = int(metadata.get('max_drones', 1))
 
 	def _parse_connection(self, line: str, line_num: int) -> None:
-		pass
+		"""
+
+		"""
+		content = line.split(':', 1)[1].strip()
+
+		if '[' in content:
+			main, meta = content.split('[', 1)
+			meta = meta.rstrip(']')
+		else:
+			main, meta = content, ''
+
+		parts = main.strip().split('-')
+		if len(parts) != 2:
+			raise ValueError(f"Line {line_num}: invalid connection format")
+
+		zone1, zone2 = parts[0].strip(), parts[1].strip()
+		if zone1 not in self.zones or zone2 not in self.zones:
+			raise ValueError(f"Line {line_num}: unknown zone in connection")
+
+		metadata = self._parse_metadata(meta, line_num)
+
+		try:
+			max_capacity = int(metadata.get('max_link_capacity', 1))
+		except ValueError:
+			raise ValueError(f"Line {line_num}: max_link_capacity must be an integer")
+		
+		if max_capacity <= 0:
+			raise ValueError(f"Line {line_num}: max_link_capacity must be a positive integer")
+		
+		self.connection.append((zone1, zone2, max_capacity))
+
+	def _parse_metadata(self, meta: str, line_num: int) -> dict:
+		result = {}
+		for tag in meta.split():
+			if  '=' not in tag:
+				raise ValueError(f"Line {line_num}: invalid metadata tag '{tag}'")
+			key, value = tag.split('=', 1)
+			result[key] = value
+		return result
