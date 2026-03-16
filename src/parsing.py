@@ -24,15 +24,21 @@ class Parser:
 			if line.startswith('nb_drones'):
 				self._parse_nb_drones(line, line_num)
 			elif line.startswith('start_hub:'):
+				if self.start_hub is not None:
+					raise ValueError(f"Line {line_num}: duplicate start_hub")
 				self._parse_zone(line, line_num, 'start')
 			elif line.startswith('hub:'):
 				self._parse_zone(line, line_num, 'normal')
 			elif line.startswith('end_hub:'):
+				if self.end_hub is not None:
+					raise ValueError(f"Line {line_num}: duplicate end_hub")
 				self._parse_zone(line, line_num, 'end')
 			elif line.startswith('connection:'):
 				self._parse_connection(line, line_num)
 			else:
 				raise ValueError(f"Line {line_num}: unknown syntax")
+
+		self._validate(line_num)	
 		return Graph(self.zones, self.connections, self.nb_drones)
 
 	def _parse_nb_drones(self, line: str, line_num: int) -> None:
@@ -66,7 +72,7 @@ class Parser:
 			main, meta = content, ''
 
 		parts = main.split():
-		if len(parts < 3):
+		if len(parts) < 3:
 			raise ValueError(f"Line {line_num}: expected name x y")
 
 		name = parts[0]
@@ -74,14 +80,24 @@ class Parser:
 		try:
 			x, y = int(parts[1]), int(parts[2])
 		except ValueError:
-			ValueError(f"Line {line_num}: coordinates must be integers")
+			raise ValueError(f"Line {line_num}: coordinates must be integers")
 		if x < 0 or y < 0:
 			raise ValueError(f"Line {line_num}: coordinates must be positive integers")
+		if name in self.zones:
+			raise ValueError(f"Line {line_num}: duplicate zone name  {name}")
 
 		metadata = self._parse_metadata(meta, line_num)
-		zone_type = metadata,get('zone', 'normal')
+		zone_type = metadata.get('zone', 'normal')
 		color = metadata.get('color', None)
 		max_drones = int(metadata.get('max_drones', 1))
+		# self.zones[name] = Zone(name, x, y, zonetype, color, max_drones)
+		self.zones[name] = {
+			'x': x,
+			'y': y,
+			'zone_type': zone_type,
+			'color': color,
+			'max_drones': max_drones
+		}
 
 	def _parse_connection(self, line: str, line_num: int) -> None:
 		"""
@@ -109,10 +125,10 @@ class Parser:
 			max_capacity = int(metadata.get('max_link_capacity', 1))
 		except ValueError:
 			raise ValueError(f"Line {line_num}: max_link_capacity must be an integer")
-		
+
 		if max_capacity <= 0:
 			raise ValueError(f"Line {line_num}: max_link_capacity must be a positive integer")
-		
+
 		self.connection.append((zone1, zone2, max_capacity))
 
 	def _parse_metadata(self, meta: str, line_num: int) -> dict:
@@ -123,3 +139,15 @@ class Parser:
 			key, value = tag.split('=', 1)
 			result[key] = value
 		return result
+
+	def _validate(self, line_num: int) -> None:
+		if self.nb_drones == 0:
+			raise ValueError("nb_drones is missing or not defined")
+		if self.start_zone is None:
+			raise ValueError("Missing start_hub")
+		if self.end_zone is None:
+			raise ValueError("Missing end_hub")
+		if len(self.zones) == 0:
+			raise ValueError("No zones defined")
+		if len(self.connections) == 0:
+			raise ValueError("No connections defined")
